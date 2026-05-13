@@ -4,6 +4,7 @@ import datetime
 import feedparser
 import warnings
 
+# Silencia avisos de sistema
 warnings.filterwarnings("ignore")
 
 print("--- INICIANDO DIAGNÓSTICO DO SCRIPT ---")
@@ -16,7 +17,7 @@ try:
 except Exception as e:
     print(f"[ERRO] Bibliotecas: {e}")
 
-# LISTA ATUALIZADA: IDs internos validados que abrem no navegador
+# LISTA DE IDs: Substitua pelos IDs internos (UC...) que você validar
 CHANNELS = [
     'UCXpYpY8O6-C_V8z72Y4KkYw', # bruno_faggion
     'UC3YyP79q2mO6-f1_0ZfF9OQ', # brunogabarra
@@ -24,8 +25,8 @@ CHANNELS = [
     'UC70769I-5i8C1e32pA_L_yA', # canalsandeco
     'UCW0n0v0Q7m_D9fX6p5pQ_7g', # Danilo-CM
     'UCX_Nf-M9m2K2R6D5_f_vS7A', # deborahfolloni
-    'UCW5P2M6C9S7p3Q0L6Q6z1aA', # DesfrutandoaVida (validado)
-    'UCY08r_5A7mS3m6qX8-5L_6w'  # LucasMontano (validado)
+    'UCW5P2M6C9S7p3Q0L6Q6z1aA', # DesfrutandoaVida
+    'UCyHOBY6IDZF9zOKJPou2Rgg'  # LucasMontano (ID Corrigido)
 ]
 
 try:
@@ -39,40 +40,55 @@ except Exception as e:
 
 def get_deep_summary(video_id, title):
     try:
+        # Busca transcrição em PT ou EN
         srt = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'en'])
         text = " ".join([i['text'] for i in srt])[:15000]
         
-        prompt = f"Resuma o vídeo '{title}' com foco em teoria e aplicação prática. Transcrição: {text}"
+        prompt = f"""
+        Analise o vídeo '{title}' e crie um guia:
+        1. Resumo Executivo (Teoria central)
+        2. Leitura Avançada (Detalhamento e aplicação prática)
+        Transcrição: {text}
+        """
         response = model.generate_content(prompt)
         return response.text
-    except:
-        return "Resumo indisponível."
+    except Exception as e:
+        print(f"   [AVISO] Erro no resumo: {e}")
+        return "Resumo indisponível para este vídeo."
 
 def main():
-    # Mantendo 30 dias para garantir que o Lucas Montano (que funciona) envie algo
+    # Janela de 30 dias para garantir que capture os vídeos do Lucas Montano no teste
     time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
-    
+    print(f"Buscando vídeos desde: {time_threshold}")
+
     for channel_id in CHANNELS:
-        # Link formatado sem espaços e com underline correto
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
         feed = feedparser.parse(feed_url)
         
-        print(f"Canal: {channel_id} | Vídeos encontrados: {len(feed.entries)}")
+        print(f"Canal: {channel_id} | Vídeos no feed: {len(feed.entries)}")
         
         for entry in feed.entries:
             published = datetime.datetime.fromisoformat(entry.published)
+            
             if published > time_threshold:
                 print(f"-> Processando: {entry.title}")
                 summary = get_deep_summary(entry.yt_videoid, entry.title)
                 
-                msg = f"📺 *{entry.title}*\n\n{summary}\n\n🔗 [Link]({entry.link})"
+                msg = (
+                    f"📺 *{entry.title}*\n"
+                    f"👤 Canal: {entry.author}\n\n"
+                    f"{summary}\n\n"
+                    f"🔗 [Link]({entry.link})"
+                )
                 
                 try:
+                    # Tenta enviar com Markdown, se falhar envia texto puro
                     bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
-                    print("   [OK] Enviado!")
+                    print("   [OK] Enviado para o Telegram!")
                 except:
-                    bot.send_message(CHAT_ID, f"Vídeo: {entry.title}\n{entry.link}")
+                    bot.send_message(CHAT_ID, f"Vídeo: {entry.title}\n{entry.link}\n\n(Erro de formatação no resumo)")
                 
+                # Pausa para evitar bloqueios
                 time.sleep(10)
 
 if __name__ == "__main__":
