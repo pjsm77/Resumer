@@ -2,9 +2,18 @@ import os
 import time
 import datetime
 import feedparser
-import google.generativeai as genai
-from youtube_transcript_api import YouTubeTranscriptApi
-from telebot import TeleBot
+# Força o silenciamento de avisos que travam o console do GitHub
+import warnings
+warnings.filterwarnings("ignore")
+
+print("Iniciando script...")
+try:
+    import google.generativeai as genai
+    from youtube_transcript_api import YouTubeTranscriptApi
+    from telebot import TeleBot
+    print("Bibliotecas importadas com sucesso!")
+except Exception as e:
+    print(f"Erro ao importar bibliotecas: {e}")
 
 # Lista de Canais (IDs internos do YouTube)
 CHANNELS = [
