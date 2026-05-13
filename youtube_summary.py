@@ -63,7 +63,7 @@ def get_deep_summary(video_id, title):
 
 def main():
     # Margem de 26h para garantir que nada escape entre execuções do GitHub
-    one_day_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=26)
+    one_day_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=260)
 
     for channel_id in CHANNELS:
         feed = feedparser.parse(f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}")
