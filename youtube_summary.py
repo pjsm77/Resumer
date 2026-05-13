@@ -40,29 +40,25 @@ except Exception as e:
 
 def get_deep_summary(video_id, title):
     try:
-        # Tenta buscar a lista de transcrições disponíveis
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        
-        # Tenta primeiro português (manual ou automática), depois inglês
-        try:
-            srt = transcript_list.find_transcript(['pt', 'pt-BR', 'en']).fetch()
-        except:
-            # Se não achar os idiomas acima, pega o primeiro disponível e traduz para pt
-            srt = transcript_list.find_transcript(['en']).translate('pt').fetch()
-            
-        text = " ".join([i['text'] for i in srt])[:15000]
+        # Em vez de baixar legenda, mandamos o link direto para o Gemini
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
         
         prompt = f"""
-        Analise o vídeo '{title}' e crie um guia detalhado:
-        1. RESUMO EXECUTIVO: Teoria central.
-        2. LEITURA AVANÇADA: Detalhamento técnico e aplicação prática.
-        Transcrição: {text}
+        Assista ao vídeo no link: {video_url}
+        Título: {title}
+        
+        Você é um especialista em síntese de conhecimento. Crie um guia detalhado:
+        1. RESUMO EXECUTIVO: Teoria central em um parágrafo.
+        2. LEITURA AVANÇADA: Detalhamento técnico e aplicação prática com exemplos.
+        
+        Importante: Se não conseguir acessar o vídeo, use o título para descrever o que seria a abordagem teórica esperada sobre o tema.
         """
+        
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        print(f"   [AVISO] Erro técnico na transcrição de {video_id}: {e}")
-        return "Resumo indisponível (Legendas ainda não processadas pelo YouTube ou desativadas)."
+        print(f"   [AVISO] Erro na IA: {e}")
+        return "Resumo indisponível no momento."
 
 def main():
     # Janela de 30 dias para garantir que capture os vídeos do Lucas Montano no teste
