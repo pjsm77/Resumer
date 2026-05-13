@@ -17,12 +17,16 @@ try:
 except Exception as e:
     print(f"[ERRO] Falha ao carregar bibliotecas: {e}")
 
-# Lista de IDs dos canais
+# Lista de URLs de feed baseadas nos nomes dos canais (Handles)
 CHANNELS = [
-    'UCXpYpY8O6-C_V8z72Y4KkYw', 'UC3YyP79q2mO6-f1_0ZfF9OQ', 
-    'UCmG9O80pUf2m-46e_FmP9Xg', 'UC70769I-5i8C1e32pA_L_yA', 
-    'UCW0n0v0Q7m_D9fX6p5pQ_7g', 'UCX_Nf-M9m2K2R6D5_f_vS7A', 
-    'UCW5P2M6C9S7p3Q0L6Q6z1aA', 'UCY08r_5A7mS3m6qX8-5L_6w'
+    'https://www.youtube.com/feeds/videos.xml?user=bruno_faggion',
+    'https://www.youtube.com/feeds/videos.xml?user=brunogabarra',
+    'https://www.youtube.com/feeds/videos.xml?user=CanaldoEslen',
+    'https://www.youtube.com/feeds/videos.xml?user=canalsandeco',
+    'https://www.youtube.com/feeds/videos.xml?user=Danilo-CM',
+    'https://www.youtube.com/feeds/videos.xml?user=deborahfolloni',
+    'https://www.youtube.com/feeds/videos.xml?user=DesfrutandoaVida',
+    'https://www.youtube.com/feeds/videos.xml?user=LucasMontano'
 ]
 
 # Configuração de chaves
