@@ -17,7 +17,7 @@ try:
 except Exception as e:
     print(f"[ERRO] Falha ao carregar bibliotecas: {e}")
 
-# Lista de URLs de feed com IDs de canal validados
+# Lista de URLs corrigida (sem espaços e com underline)
 CHANNELS = [
     'https://www.youtube.com/feeds/videos.xml?channel_id=UCXpYpY8O6-C_V8z72Y4KkYw', # bruno_faggion
     'https://www.youtube.com/feeds/videos.xml?channel_id=UC3YyP79q2mO6-f1_0ZfF9OQ', # brunogabarra
