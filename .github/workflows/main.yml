@@ -1,0 +1,22 @@
+name: YT Summary Tool
+on:
+  schedule:
+    - cron: '0 23 * * *' # Todo dia às 20h (Horário de Brasília aprox.)
+  workflow_dispatch: # Permite disparar manualmente agora!
+
+jobs:
+  run-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Deps
+        run: pip install feedparser google-generativeai youtube-transcript-api pyTelegramBotAPI
+      - name: Exec
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python youtube_summary.py
