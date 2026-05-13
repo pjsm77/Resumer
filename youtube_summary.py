@@ -62,15 +62,13 @@ def get_deep_summary(video_id, title):
         return "Resumo detalhado indisponível para este vídeo."
 
 def main():
-    # TESTE: Alterado para 30 dias para garantir que encontre algo hoje
     time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
-    print(f"Buscando vídeos postados após: {time_threshold}")
+    print(f"Buscando vídeos desde: {time_threshold}")
 
-    for channel_id in CHANNELS:
-        feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+    for feed_url in CHANNELS:
         feed = feedparser.parse(feed_url)
-        
-        print(f"Verificando canal {channel_id}: {len(feed.entries)} vídeos totais no feed.")
+        print(f"Verificando feed: {feed_url} - Encontrados: {len(feed.entries)} vídeos.")
+
         
         for entry in feed.entries:
             published = datetime.datetime.fromisoformat(entry.published)
