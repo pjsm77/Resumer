@@ -40,21 +40,29 @@ except Exception as e:
 
 def get_deep_summary(video_id, title):
     try:
-        # Busca transcrição em PT ou EN
-        srt = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'en'])
+        # Tenta buscar a lista de transcrições disponíveis
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # Tenta primeiro português (manual ou automática), depois inglês
+        try:
+            srt = transcript_list.find_transcript(['pt', 'pt-BR', 'en']).fetch()
+        except:
+            # Se não achar os idiomas acima, pega o primeiro disponível e traduz para pt
+            srt = transcript_list.find_transcript(['en']).translate('pt').fetch()
+            
         text = " ".join([i['text'] for i in srt])[:15000]
         
         prompt = f"""
-        Analise o vídeo '{title}' e crie um guia:
-        1. Resumo Executivo (Teoria central)
-        2. Leitura Avançada (Detalhamento e aplicação prática)
+        Analise o vídeo '{title}' e crie um guia detalhado:
+        1. RESUMO EXECUTIVO: Teoria central.
+        2. LEITURA AVANÇADA: Detalhamento técnico e aplicação prática.
         Transcrição: {text}
         """
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        print(f"   [AVISO] Erro no resumo: {e}")
-        return "Resumo indisponível para este vídeo."
+        print(f"   [AVISO] Erro técnico na transcrição de {video_id}: {e}")
+        return "Resumo indisponível (Legendas ainda não processadas pelo YouTube ou desativadas)."
 
 def main():
     # Janela de 30 dias para garantir que capture os vídeos do Lucas Montano no teste
