@@ -2,8 +2,8 @@ name: YouTube Summary Bot
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Executa a cada 6 horas
-  workflow_dispatch: # Permite rodar manualmente para testes
+    - cron: '0 */6 * * *' 
+  workflow_dispatch: 
 
 jobs:
   build:
@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install feedparser google-generativeai pyTelegramBotAPI google-api-python-client
+          pip install feedparser google-genai pyTelegramBotAPI google-api-python-client
 
       - name: Run summary script
         env:
