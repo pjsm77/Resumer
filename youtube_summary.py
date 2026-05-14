@@ -4,38 +4,32 @@ import datetime
 import feedparser
 import warnings
 from googleapiclient.discovery import build
-import google.generativeai as genai
+from google import genai  # Nova biblioteca oficial
 from telebot import TeleBot
 
-# Silenciar alertas de depreciação para não poluir o log do GitHub Actions
-warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore")
 
-print("--- INICIANDO PROCESSO DE RESUMO ---")
+print("--- INICIANDO PROCESSO COM NOVA API GEMINI ---")
 
-# --- CONFIGURAÇÃO DAS APIS ---
+# --- CONFIGURAÇÃO ---
 try:
     YOUTUBE_KEY = os.environ.get('YOUTUBE_API_KEY')
     GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
     TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
     CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-    # Configuração do Gemini
-    genai.configure(api_key=GEMINI_KEY)
+    # Novo cliente da API Google GenAI
+    client = genai.Client(api_key=GEMINI_KEY)
     
-    # Usando o modelo 1.5-flash que substituiu o 1.0-pro e evita o erro 404
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    # Configuração Telegram e YouTube
     bot = TeleBot(TELEGRAM_TOKEN)
     yt_service = build('youtube', 'v3', developerKey=YOUTUBE_KEY)
     
-    print("[OK] Conexão com APIs estabelecida.")
+    print("[OK] Conexão com APIs estabelecida (google-genai).")
 
 except Exception as e:
     print(f"[ERRO CRÍTICO NA CONFIGURAÇÃO]: {e}")
     exit(1)
 
-# Seus canais de interesse
 CHANNELS = [
     'UCXpYpY8O6-C_V8z72Y4KkYw', 'UC3YyP79q2mO6-f1_0ZfF9OQ', 
     'UCmG9O80pUf2m-46e_FmP9Xg', 'UC70769I-5i8C1e32pA_L_yA', 
@@ -44,7 +38,6 @@ CHANNELS = [
 ]
 
 def get_video_details(video_id):
-    """Obtém a descrição completa para a IA ter mais contexto"""
     try:
         request = yt_service.videos().list(part="snippet", id=video_id)
         response = request.execute()
@@ -55,13 +48,12 @@ def get_video_details(video_id):
     return ""
 
 def main():
-    # Processar vídeos das últimas 24 horas
+    # Processar últimas 24 horas
     time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
 
     for channel_id in CHANNELS:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
         feed = feedparser.parse(feed_url)
-        
         print(f"\nCanal: {channel_id}")
         
         for entry in feed.entries:
@@ -70,38 +62,30 @@ def main():
             if published > time_threshold:
                 try:
                     print(f"-> Analisando: {entry.title}")
-                    
                     desc = get_video_details(entry.yt_videoid)
                     texto_para_ia = desc if desc else entry.summary
 
-                    prompt = f"""
-                    Aja como um especialista em tecnologia. Analise o vídeo: {entry.title}
-                    Canal: {entry.author}
-                    Descrição: {texto_para_ia[:4000]}
+                    prompt = f"Gere um resumo técnico do vídeo '{entry.title}' do canal {entry.author}. Use a descrição para contexto: {texto_para_ia[:4000]}"
                     
-                    Gere um resumo em Markdown para Telegram com:
-                    1. **O que é o vídeo** (Resumo executivo em 2 frases)
-                    2. **Pontos Principais** (Bullets com os insights)
-                    3. **Leitura Avançada** (Conceito técnico aprofundado)
-                    """
+                    # Chamada usando a nova sintaxe da biblioteca google-genai
+                    response = client.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=prompt
+                    )
                     
-                    response = model.generate_content(prompt)
                     summary = response.text
+                    msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 {entry.link}"
                     
-                    msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link do Vídeo]({entry.link})"
-                    
-                    # Envio respeitando limite de caracteres do Telegram
                     if len(msg) > 4000:
                         bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
                     else:
                         bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
                     
-                    print("   [OK] Enviado para o Telegram!")
-                    time.sleep(10) # Pausa para evitar bloqueio de API
+                    print("   [OK] Enviado!")
+                    time.sleep(10) 
                     
                 except Exception as e:
                     print(f"   [ERRO NO VÍDEO]: {e}")
 
 if __name__ == "__main__":
     main()
-    print("\n--- PROCESSO CONCLUÍDO ---")
