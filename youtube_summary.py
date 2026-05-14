@@ -3,18 +3,27 @@ import time
 import datetime
 import feedparser
 import warnings
-import yt_dlp
+from googleapiclient.discovery import build
 
 warnings.filterwarnings("ignore")
 
+# Configuração das APIs
 try:
     import google.generativeai as genai
     from telebot import TeleBot
-    print("[OK] Bibliotecas carregadas.")
+    
+    genai.configure(api_key=os.environ['GEMINI_API_KEY'])
+    model = genai.GenerativeModel('gemini-pro')
+    bot = TeleBot(os.environ['TELEGRAM_TOKEN'])
+    CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
+    
+    # Cliente oficial do YouTube
+    yt_service = build('youtube', 'v3', developerKey=os.environ['YOUTUBE_API_KEY'])
+    print("[OK] APIs configuradas.")
 except Exception as e:
-    print(f"[ERRO] Bibliotecas: {e}")
+    print(f"[ERRO] Configuração: {e}")
 
-# IDs validados
+# Canais que você acompanha (IDs validados)
 CHANNELS = [
     'UCXpYpY8O6-C_V8z72Y4KkYw', 'UC3YyP79q2mO6-f1_0ZfF9OQ', 
     'UCmG9O80pUf2m-46e_FmP9Xg', 'UC70769I-5i8C1e32pA_L_yA', 
@@ -22,74 +31,73 @@ CHANNELS = [
     'UCW5P2M6C9S7p3Q0L6Q6z1aA', 'UCyHOBY6IDZF9zOKJPou2Rgg'
 ]
 
-genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-model = genai.GenerativeModel('gemini-pro')
-bot = TeleBot(os.environ['TELEGRAM_TOKEN'])
-CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
-
-def get_transcript_with_ytdlp(video_id):
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-    ydl_opts = {
-        'skip_download': True,
-        'writesubtitles': True,
-        'writeautomaticsub': True,
-        'subtitleslangs': ['pt', 'pt-BR', 'en'],
-        'quiet': True,
-        'no_warnings': True,
-    }
-    
+def get_video_details(video_id):
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=False)
-            # O yt-dlp não baixa o texto diretamente para variável facilmente, 
-            # então usamos os metadados de descrição como plano B imediato
-            description = info.get('description', '')
-            return description[:10000] # Retorna a descrição se a legenda falhar
-    except:
-        return None
+        request = yt_service.videos().list(part="snippet", id=video_id)
+        response = request.execute()
+        if response['items']:
+            snippet = response['items'][0]['snippet']
+            return {
+                "description": snippet.get('description', ''),
+                "tags": ", ".join(snippet.get('tags', []))
+            }
+    except Exception as e:
+        print(f"Erro YouTube API: {e}")
+    return None
 
-def get_deep_summary(video_id, title):
-    content = get_transcript_with_ytdlp(video_id)
-    
-    if not content or len(content) < 100:
-        return "Resumo indisponível: Conteúdo insuficiente para análise."
+def get_deep_summary(video_id, title, author):
+    data = get_video_details(video_id)
+    desc = data['description'] if data else ""
+    tags = data['tags'] if data else ""
 
+    # Prompt que usa metadados para construir a teoria
     prompt = f"""
-    Você é um especialista em síntese. Analise o conteúdo do vídeo "{title}":
-    1. RESUMO EXECUTIVO: Teoria central.
-    2. LEITURA AVANÇADA: Detalhamento e aplicação.
-    Conteúdo extraído: {content}
+    Analise o vídeo "{title}" de {author}.
+    Contexto (Descrição): {desc[:4000]}
+    Palavras-chave: {tags}
+    
+    Crie um guia técnico estruturado:
+    1. RESUMO EXECUTIVO (Essência teórica da abordagem)
+    2. LEITURA AVANÇADA (Aprofundamento conceitual e aplicação prática)
+    
+    Nota: Use o seu conhecimento sobre o estilo do autor e o tema para expandir os pontos citados na descrição.
     """
     
     try:
         response = model.generate_content(prompt)
         return response.text
     except:
-        return "Erro ao gerar resposta com a IA."
+        return "Resumo indisponível via metadados."
 
 def main():
+    # Janela de 30 dias para o teste inicial
     time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
-    
+
     for channel_id in CHANNELS:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
         feed = feedparser.parse(feed_url)
-        print(f"Canal: {channel_id} | Vídeos: {len(feed.entries)}")
+        print(f"Processando canal: {channel_id}")
         
         for entry in feed.entries:
             published = datetime.datetime.fromisoformat(entry.published)
             if published > time_threshold:
-                print(f"-> Analisando: {entry.title}")
-                summary = get_deep_summary(entry.yt_videoid, entry.title)
+                print(f"-> Vídeo: {entry.title}")
+                summary = get_deep_summary(entry.yt_videoid, entry.title, entry.author)
                 
-                msg = f"📺 *{entry.title}*\n\n{summary}\n\n🔗 [Link]({entry.link})"
+                msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link]({entry.link})"
                 
                 try:
-                    bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
+                    # Divisão de mensagens longas (>4096 caracteres)
+                    if len(msg) > 4000:
+                        bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
+                        bot.send_message(CHAT_ID, msg[4000:], parse_mode='Markdown')
+                    else:
+                        bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
                     print("   [OK] Enviado!")
                 except:
                     bot.send_message(CHAT_ID, f"Vídeo: {entry.title}\n{entry.link}")
                 
-                time.sleep(12) # Pausa maior para evitar bloqueios
+                time.sleep(8) # Pausa amigável para a quota da API
 
 if __name__ == "__main__":
     main()
