@@ -1,14 +1,14 @@
-name: YT Summary Tool
+name: YouTube Summary Bot
 
 on:
   schedule:
-    # Agendado para as 23:00 UTC (aproximadamente 20:00 no horário de Brasília)
-    - cron: '0 23 * * *'
-  workflow_dispatch: # Permite que você execute manualmente para testes
+    - cron: '0 */6 * * *' # Executa a cada 6 horas
+  workflow_dispatch: # Permite rodar manualmente
 
 jobs:
-  run-summary:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -16,24 +16,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          # Atualizado para 3.11 para evitar problemas de compatibilidade com bibliotecas Google
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install feedparser google-generativeai youtube-transcript-api pyTelegramBotAPI
-
-          run: |
-          pip install feedparser google-generativeai pyTelegramBotAPI yt-dlp
-
-          run: |
-          pip install feedparser google-genai pyTelegramBotAPI google-api-python-client          
+          pip install feedparser google-generativeai pyTelegramBotAPI google-api-python-client
 
       - name: Run summary script
         env:
-          # Estas variáveis devem estar configuradas em Settings > Secrets do seu GitHub
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python youtube_summary.py
