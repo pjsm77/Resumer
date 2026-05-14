@@ -7,25 +7,23 @@ from googleapiclient.discovery import build
 from google import genai
 from telebot import TeleBot
 
-# Silenciar avisos de depreciação
 warnings.filterwarnings("ignore")
 
-print("--- INICIANDO EXECUÇÃO (VERSÃO FINAL) ---")
+print("--- INICIANDO EXECUÇÃO (VERSÃO GEMINI 3) ---")
 
-# --- CONFIGURAÇÃO ---
 try:
     YOUTUBE_KEY = os.environ.get('YOUTUBE_API_KEY')
     GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
     TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
     CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-    # Inicialização padrão da nova biblioteca
+    # Inicialização para Gemini 3
     client = genai.Client(api_key=GEMINI_KEY)
     
     bot = TeleBot(TELEGRAM_TOKEN)
     yt_service = build('youtube', 'v3', developerKey=YOUTUBE_KEY)
     
-    print("[OK] Conexão com APIs estabelecida.")
+    print("[OK] Conexão estabelecida.")
 
 except Exception as e:
     print(f"[ERRO CONFIG]: {e}")
@@ -49,7 +47,6 @@ def get_video_details(video_id):
     return ""
 
 def main():
-    # Analisar vídeos das últimas 24 horas
     time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
 
     for channel_id in CHANNELS:
@@ -64,35 +61,21 @@ def main():
                     print(f"-> Analisando: {entry.title}")
                     desc = get_video_details(entry.yt_videoid)
                     
-                    # MUDANÇA CRUCIAL: Usando o nome técnico absoluto para evitar 404
+                    # AJUSTE: Usando o modelo que aparece na sua imagem image_95c67e.png
                     response = client.models.generate_content(
-                        model="gemini-1.5-flash",
+                        model="gemini-3-flash",
                         contents=f"Resuma o vídeo: {entry.title}. Contexto: {desc[:3500]}"
                     )
                     
                     summary = response.text
                     msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link]({entry.link})"
                     
-                    if len(msg) > 4000:
-                        bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
-                    else:
-                        bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
-                    
-                    print("   [OK] Enviado para o Telegram!")
-                    time.sleep(10)
+                    bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
+                    print("   [OK] Enviado!")
+                    time.sleep(5)
                     
                 except Exception as e:
-                    # Se falhar, tentamos uma última vez com o sufixo -latest
-                    try:
-                        print("   [Tentativa 2] Usando sufixo -latest...")
-                        response = client.models.generate_content(
-                            model="gemini-1.5-flash-latest",
-                            contents=f"Resuma: {entry.title}"
-                        )
-                        bot.send_message(CHAT_ID, f"📺 *{entry.title}*\n\n{response.text}", parse_mode='Markdown')
-                    except Exception as e2:
-                        print(f"   [FALHA TOTAL]: {e2}")
+                    print(f"   [FALHA]: {e}")
 
 if __name__ == "__main__":
     main()
-    print("--- PROCESSO CONCLUÍDO ---")
