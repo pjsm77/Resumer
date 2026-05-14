@@ -26,6 +26,9 @@ jobs:
           run: |
           pip install feedparser google-generativeai pyTelegramBotAPI yt-dlp
 
+          run: |
+          pip install feedparser google-genai pyTelegramBotAPI google-api-python-client          
+
       - name: Run summary script
         env:
           # Estas variáveis devem estar configuradas em Settings > Secrets do seu GitHub
