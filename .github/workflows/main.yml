@@ -3,7 +3,7 @@ name: YouTube Summary Bot
 on:
   schedule:
     - cron: '0 */6 * * *' # Executa a cada 6 horas
-  workflow_dispatch: # Permite rodar manualmente
+  workflow_dispatch: # Permite rodar manualmente para testes
 
 jobs:
   build:
