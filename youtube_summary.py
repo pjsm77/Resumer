@@ -9,24 +9,21 @@ from telebot import TeleBot
 
 warnings.filterwarnings("ignore")
 
-print("--- INICIANDO EXECUÇÃO (VERSÃO GEMINI 3) ---")
-
+# --- CONFIGURAÇÃO ---
 try:
     YOUTUBE_KEY = os.environ.get('YOUTUBE_API_KEY')
     GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
     TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
     CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-    # Inicialização para Gemini 3
     client = genai.Client(api_key=GEMINI_KEY)
-    
     bot = TeleBot(TELEGRAM_TOKEN)
     yt_service = build('youtube', 'v3', developerKey=YOUTUBE_KEY)
     
     print("[OK] Conexão estabelecida.")
 
 except Exception as e:
-    print(f"[ERRO CONFIG]: {e}")
+    print(f"[ERRO]: {e}")
     exit(1)
 
 CHANNELS = [
@@ -42,8 +39,8 @@ def get_video_details(video_id):
         response = request.execute()
         if response.get('items'):
             return response['items'][0]['snippet'].get('description', '')
-    except Exception as e:
-        print(f"   [API YT]: {e}")
+    except:
+        return ""
     return ""
 
 def main():
@@ -61,21 +58,21 @@ def main():
                     print(f"-> Analisando: {entry.title}")
                     desc = get_video_details(entry.yt_videoid)
                     
-                    # AJUSTE: Usando o modelo que aparece na sua imagem image_95c67e.png
+                    # Usando o ID exato confirmado na imagem image_9564fa.png
                     response = client.models.generate_content(
-                        model="gemini-3-flash",
-                        contents=f"Resuma o vídeo: {entry.title}. Contexto: {desc[:3500]}"
+                        model="models/gemini-3-flash-preview", 
+                        contents=f"Resuma este vídeo de forma concisa: {entry.title}. Contexto: {desc[:3000]}"
                     )
                     
                     summary = response.text
                     msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link]({entry.link})"
                     
                     bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
-                    print("   [OK] Enviado!")
+                    print("   [OK] Enviado para o Telegram!")
                     time.sleep(5)
                     
                 except Exception as e:
-                    print(f"   [FALHA]: {e}")
+                    print(f"   [ERRO NO VÍDEO]: {e}")
 
 if __name__ == "__main__":
     main()
