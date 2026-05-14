@@ -4,26 +4,39 @@ import datetime
 import feedparser
 import warnings
 from googleapiclient.discovery import build
+import google.generativeai as genai
+from telebot import TeleBot
 
 warnings.filterwarnings("ignore")
 
-# Configuração das APIs
-try:
-    import google.generativeai as genai
-    from telebot import TeleBot
-    
-    genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-    model = genai.GenerativeModel('gemini-pro')
-    bot = TeleBot(os.environ['TELEGRAM_TOKEN'])
-    CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
-    
-    # Cliente oficial do YouTube
-    yt_service = build('youtube', 'v3', developerKey=os.environ['YOUTUBE_API_KEY'])
-    print("[OK] APIs configuradas.")
-except Exception as e:
-    print(f"[ERRO] Configuração: {e}")
+print("--- INICIANDO DIAGNÓSTICO DO SCRIPT ---")
 
-# Canais que você acompanha (IDs validados)
+# Inicialização Global
+yt_service = None
+
+try:
+    # Captura das Secrets mapeadas no Workflow
+    youtube_key = os.environ.get('YOUTUBE_API_KEY')
+    gemini_key = os.environ.get('GEMINI_API_KEY')
+    telegram_token = os.environ.get('TELEGRAM_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+
+    # Validação
+    if not youtube_key:
+        raise ValueError("A Secret 'YOUTUBE_API_KEY' não foi passada para o script.")
+
+    genai.configure(api_key=gemini_key)
+    model = genai.GenerativeModel('gemini-pro')
+    bot = TeleBot(telegram_token)
+    CHAT_ID = chat_id
+    
+    yt_service = build('youtube', 'v3', developerKey=youtube_key)
+    print("[OK] APIs configuradas com sucesso.")
+
+except Exception as e:
+    print(f"[ERRO CRÍTICO]: {e}")
+    exit(1)
+
 CHANNELS = [
     'UCXpYpY8O6-C_V8z72Y4KkYw', 'UC3YyP79q2mO6-f1_0ZfF9OQ', 
     'UCmG9O80pUf2m-46e_FmP9Xg', 'UC70769I-5i8C1e32pA_L_yA', 
@@ -33,76 +46,52 @@ CHANNELS = [
 
 def get_video_details(video_id):
     try:
-        print(f"   [API] Consultando metadados do vídeo: {video_id}")
         request = yt_service.videos().list(part="snippet", id=video_id)
         response = request.execute()
-        
-        if not response.get('items'):
-            print(f"   [AVISO] API retornou lista vazia para o ID: {video_id}")
-            return None
-            
-        snippet = response['items'][0]['snippet']
-        return {
-            "description": snippet.get('description', ''),
-            "tags": ", ".join(snippet.get('tags', []))
-        }
+        if response.get('items'):
+            snippet = response['items'][0]['snippet']
+            return {
+                "description": snippet.get('description', ''),
+                "tags": ", ".join(snippet.get('tags', []))
+            }
     except Exception as e:
-        print(f"   [ERRO API YOUTUBE]: {e}")
-        return None
-
-def get_deep_summary(video_id, title, author):
-    data = get_video_details(video_id)
-    desc = data['description'] if data else ""
-    tags = data['tags'] if data else ""
-
-    # Prompt que usa metadados para construir a teoria
-    prompt = f"""
-    Analise o vídeo "{title}" de {author}.
-    Contexto (Descrição): {desc[:4000]}
-    Palavras-chave: {tags}
-    
-    Crie um guia técnico estruturado:
-    1. RESUMO EXECUTIVO (Essência teórica da abordagem)
-    2. LEITURA AVANÇADA (Aprofundamento conceitual e aplicação prática)
-    
-    Nota: Use o seu conhecimento sobre o estilo do autor e o tema para expandir os pontos citados na descrição.
-    """
-    
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except:
-        return "Resumo indisponível via metadados."
+        print(f"   [API YOUTUBE ERRO]: {e}")
+    return None
 
 def main():
-    # Janela de 30 dias para o teste inicial
-    time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)
+    time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
 
     for channel_id in CHANNELS:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
         feed = feedparser.parse(feed_url)
-        print(f"Processando canal: {channel_id}")
+        print(f"Canal: {channel_id} | Feed OK")
         
         for entry in feed.entries:
             published = datetime.datetime.fromisoformat(entry.published)
             if published > time_threshold:
-                print(f"-> Vídeo: {entry.title}")
-                summary = get_deep_summary(entry.yt_videoid, entry.title, entry.author)
-                
-                msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link]({entry.link})"
-                
                 try:
-                    # Divisão de mensagens longas (>4096 caracteres)
+                    print(f"-> Processando: {entry.title}")
+                    data = get_video_details(entry.yt_videoid)
+                    
+                    desc = data['description'] if data else "Sem descrição disponível."
+                    tags = data['tags'] if data else ""
+
+                    prompt = f"Analise o vídeo '{entry.title}' de {entry.author}. Descrição: {desc[:4000]}. Gere um Resumo Executivo e Leitura Avançada."
+                    
+                    response = model.generate_content(prompt)
+                    summary = response.text
+                    
+                    msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link]({entry.link})"
+                    
                     if len(msg) > 4000:
                         bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
-                        bot.send_message(CHAT_ID, msg[4000:], parse_mode='Markdown')
                     else:
                         bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
+                    
                     print("   [OK] Enviado!")
-                except:
-                    bot.send_message(CHAT_ID, f"Vídeo: {entry.title}\n{entry.link}")
-                
-                time.sleep(8) # Pausa amigável para a quota da API
+                    time.sleep(10)
+                except Exception as e:
+                    print(f"   [ERRO NO VÍDEO]: {e}")
 
 if __name__ == "__main__":
     main()
