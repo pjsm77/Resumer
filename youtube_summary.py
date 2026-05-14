@@ -76,7 +76,7 @@ def get_deep_summary(video_id, title, author):
 
 def main():
     # Janela de 30 dias para o teste inicial
-    time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
+    time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)
 
     for channel_id in CHANNELS:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
