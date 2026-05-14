@@ -7,24 +7,25 @@ from googleapiclient.discovery import build
 import google.generativeai as genai
 from telebot import TeleBot
 
-# Ignorar avisos de depreciação para manter o log limpo
-warnings.filterwarnings("ignore")
+# Silenciar alertas de depreciação para não poluir o log do GitHub Actions
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 print("--- INICIANDO PROCESSO DE RESUMO ---")
 
-# --- CONFIGURAÇÃO INICIAL ---
+# --- CONFIGURAÇÃO DAS APIS ---
 try:
-    # Captura das variáveis de ambiente (Secrets do GitHub)
     YOUTUBE_KEY = os.environ.get('YOUTUBE_API_KEY')
     GEMINI_KEY = os.environ.get('GEMINI_API_KEY')
     TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
     CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-    # Inicialização das APIs
+    # Configuração do Gemini
     genai.configure(api_key=GEMINI_KEY)
-    # Usamos o 1.5-flash por ser mais rápido e evitar o erro 404 da versão Pro antiga
+    
+    # Usando o modelo 1.5-flash que substituiu o 1.0-pro e evita o erro 404
     model = genai.GenerativeModel('gemini-1.5-flash')
     
+    # Configuração Telegram e YouTube
     bot = TeleBot(TELEGRAM_TOKEN)
     yt_service = build('youtube', 'v3', developerKey=YOUTUBE_KEY)
     
@@ -34,7 +35,7 @@ except Exception as e:
     print(f"[ERRO CRÍTICO NA CONFIGURAÇÃO]: {e}")
     exit(1)
 
-# Lista de canais para monitorar
+# Seus canais de interesse
 CHANNELS = [
     'UCXpYpY8O6-C_V8z72Y4KkYw', 'UC3YyP79q2mO6-f1_0ZfF9OQ', 
     'UCmG9O80pUf2m-46e_FmP9Xg', 'UC70769I-5i8C1e32pA_L_yA', 
@@ -43,27 +44,25 @@ CHANNELS = [
 ]
 
 def get_video_details(video_id):
-    """Recupera a descrição completa do vídeo via API do YouTube"""
+    """Obtém a descrição completa para a IA ter mais contexto"""
     try:
         request = yt_service.videos().list(part="snippet", id=video_id)
         response = request.execute()
         if response.get('items'):
-            snippet = response['items'][0]['snippet']
-            return snippet.get('description', '')
+            return response['items'][0]['snippet'].get('description', '')
     except Exception as e:
-        print(f"   [ERRO YOUTUBE API]: {e}")
+        print(f"   [API YOUTUBE]: {e}")
     return ""
 
 def main():
-    # Define o período de busca (últimas 24 horas para evitar duplicatas no log)
-    # Você pode ajustar para 'days=7' se quiser processar mais vídeos antigos na primeira vez
+    # Processar vídeos das últimas 24 horas
     time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
 
     for channel_id in CHANNELS:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
         feed = feedparser.parse(feed_url)
         
-        print(f"\nVerificando canal: {channel_id}")
+        print(f"\nCanal: {channel_id}")
         
         for entry in feed.entries:
             published = datetime.datetime.fromisoformat(entry.published)
@@ -72,42 +71,37 @@ def main():
                 try:
                     print(f"-> Analisando: {entry.title}")
                     
-                    # Busca descrição completa para um resumo melhor
-                    full_description = get_video_details(entry.yt_videoid)
-                    contexto = full_description if full_description else entry.summary
+                    desc = get_video_details(entry.yt_videoid)
+                    texto_para_ia = desc if desc else entry.summary
 
                     prompt = f"""
-                    Você é um assistente especialista em tecnologia e análise de dados.
-                    Analise o conteúdo do vídeo '{entry.title}' do canal {entry.author}.
+                    Aja como um especialista em tecnologia. Analise o vídeo: {entry.title}
+                    Canal: {entry.author}
+                    Descrição: {texto_para_ia[:4000]}
                     
-                    Conteúdo para análise: {contexto[:5000]}
-                    
-                    Gere um resumo formatado para Telegram (Markdown):
-                    1. **Resumo Executivo**: (O que é o vídeo em 2 frases)
-                    2. **Pontos Chave**: (Lista de insights principais)
-                    3. **Leitura Avançada**: (Explicação técnica de um conceito citado)
+                    Gere um resumo em Markdown para Telegram com:
+                    1. **O que é o vídeo** (Resumo executivo em 2 frases)
+                    2. **Pontos Principais** (Bullets com os insights)
+                    3. **Leitura Avançada** (Conceito técnico aprofundado)
                     """
                     
                     response = model.generate_content(prompt)
-                    summary_text = response.text
+                    summary = response.text
                     
-                    # Formata a mensagem final
-                    msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary_text}\n\n🔗 [Assistir no YouTube]({entry.link})"
+                    msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link do Vídeo]({entry.link})"
                     
-                    # Envia para o Telegram (respeitando o limite de caracteres)
-                    if len(msg) > 4090:
-                        bot.send_message(CHAT_ID, msg[:4090], parse_mode='Markdown')
+                    # Envio respeitando limite de caracteres do Telegram
+                    if len(msg) > 4000:
+                        bot.send_message(CHAT_ID, msg[:4000], parse_mode='Markdown')
                     else:
                         bot.send_message(CHAT_ID, msg, parse_mode='Markdown')
                     
-                    print("   [OK] Mensagem enviada!")
-                    
-                    # Pausa para evitar rate limit das APIs
-                    time.sleep(5)
+                    print("   [OK] Enviado para o Telegram!")
+                    time.sleep(10) # Pausa para evitar bloqueio de API
                     
                 except Exception as e:
-                    print(f"   [ERRO AO PROCESSAR VÍDEO]: {e}")
+                    print(f"   [ERRO NO VÍDEO]: {e}")
 
 if __name__ == "__main__":
     main()
-    print("\n--- SCRIPT FINALIZADO ---")
+    print("\n--- PROCESSO CONCLUÍDO ---")
