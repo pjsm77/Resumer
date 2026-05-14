@@ -33,17 +33,22 @@ CHANNELS = [
 
 def get_video_details(video_id):
     try:
+        print(f"   [API] Consultando metadados do vídeo: {video_id}")
         request = yt_service.videos().list(part="snippet", id=video_id)
         response = request.execute()
-        if response['items']:
-            snippet = response['items'][0]['snippet']
-            return {
-                "description": snippet.get('description', ''),
-                "tags": ", ".join(snippet.get('tags', []))
-            }
+        
+        if not response.get('items'):
+            print(f"   [AVISO] API retornou lista vazia para o ID: {video_id}")
+            return None
+            
+        snippet = response['items'][0]['snippet']
+        return {
+            "description": snippet.get('description', ''),
+            "tags": ", ".join(snippet.get('tags', []))
+        }
     except Exception as e:
-        print(f"Erro YouTube API: {e}")
-    return None
+        print(f"   [ERRO API YOUTUBE]: {e}")
+        return None
 
 def get_deep_summary(video_id, title, author):
     data = get_video_details(video_id)
