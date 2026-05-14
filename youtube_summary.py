@@ -4,34 +4,34 @@ import datetime
 import feedparser
 import warnings
 from googleapiclient.discovery import build
-import google.generativeai as genai
+from google import genai
 from telebot import TeleBot
 
 warnings.filterwarnings("ignore")
 
 print("--- INICIANDO DIAGNÓSTICO DO SCRIPT ---")
 
-# Inicialização Global
+# Inicialização de variáveis
 yt_service = None
+client = None
 
 try:
-    # Captura das Secrets mapeadas no Workflow
+    # Captura das Secrets
     youtube_key = os.environ.get('YOUTUBE_API_KEY')
     gemini_key = os.environ.get('GEMINI_API_KEY')
     telegram_token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID')
 
-    # Validação
-    if not youtube_key:
-        raise ValueError("A Secret 'YOUTUBE_API_KEY' não foi passada para o script.")
-
-    genai.configure(api_key=gemini_key)
-    model = genai.GenerativeModel('gemini-pro')
+    # Configuração do novo cliente Gemini
+    client = genai.Client(api_key=gemini_key)
+    
+    # Configuração Telegram
     bot = TeleBot(telegram_token)
     CHAT_ID = chat_id
     
+    # Cliente YouTube
     yt_service = build('youtube', 'v3', developerKey=youtube_key)
-    print("[OK] APIs configuradas com sucesso.")
+    print("[OK] APIs e novo cliente Gemini configurados.")
 
 except Exception as e:
     print(f"[ERRO CRÍTICO]: {e}")
@@ -76,11 +76,20 @@ def main():
                     desc = data['description'] if data else "Sem descrição disponível."
                     tags = data['tags'] if data else ""
 
-                    prompt = f"Analise o vídeo '{entry.title}' de {entry.author}. Descrição: {desc[:4000]}. Gere um Resumo Executivo e Leitura Avançada."
+                    prompt = f"""
+                    Analise o vídeo '{entry.title}' de {entry.author}. 
+                    Descrição técnica: {desc[:4000]}
                     
-                    response = model.generate_content(prompt)
+                    Gere um Resumo Executivo e Leitura Avançada com foco em teoria e aplicação prática.
+                    """
+                    
+                    # Chamada para a nova biblioteca google-genai
+                    response = client.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=prompt
+                    )
+                    
                     summary = response.text
-                    
                     msg = f"📺 *{entry.title}*\n👤 {entry.author}\n\n{summary}\n\n🔗 [Link]({entry.link})"
                     
                     if len(msg) > 4000:
