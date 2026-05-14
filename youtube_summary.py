@@ -27,10 +27,14 @@ except Exception as e:
     exit(1)
 
 CHANNELS = [
-    'UCXpYpY8O6-C_V8z72Y4KkYw', 'UC3YyP79q2mO6-f1_0ZfF9OQ', 
-    'UCmG9O80pUf2m-46e_FmP9Xg', 'UC70769I-5i8C1e32pA_L_yA', 
-    'UCW0n0v0Q7m_D9fX6p5pQ_7g', 'UCX_Nf-M9m2K2R6D5_f_vS7A', 
-    'UCW5P2M6C9S7p3Q0L6Q6z1aA', 'UCyHOBY6IDZF9zOKJPou2Rgg'
+    'UCCwNmdz91xrj09WK2zL3MpA', # Bruno Faggion | https://www.youtube.com/@bruno_faggion
+    'UC8sEDBcXsQdOOT52NuKvm_A', # Bruno Gabarra | https://www.youtube.com/@brunogabarra
+    'UCwOxBQR9QK24qk6XM5jeGgA', # Eslen Delanogare (Canal do Eslen) | https://www.youtube.com/@CanaldoEslen
+    'UCIQne9yW4TvCCNYQLszfXCQ', # Sandeco (Canal Sandeco) | https://www.youtube.com/@canalsandeco
+    'UCn5EO29OZpqazhaYuox-ieA', # Danilo-CM | https://www.youtube.com/@Danilo-CM
+    'UCta1sF9e9YzzNG4OlQgIlXw', # Deborah Folloni | https://www.youtube.com/@deborahfolloni
+    'UC-bvuG8yEG1SEPYLzABkvlA', # Desfrutando a Vida | https://www.youtube.com/@DesfrutandoaVida
+    'UCyHOBY6IDZF9zOKJPou2Rgg'  # Lucas Montano | https://www.youtube.com/@LucasMontano
 ]
 
 def get_video_details(video_id):
