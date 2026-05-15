@@ -56,7 +56,7 @@ def get_video_details(video_id):
     return ""
 
 def main():
-    time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+    time_threshold = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=10)
 
     for channel_id in CHANNELS:
         feed_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
