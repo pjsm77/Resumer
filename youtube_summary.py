@@ -34,7 +34,15 @@ CHANNELS = [
     'UCn5EO29OZpqazhaYuox-ieA', # Danilo-CM | https://www.youtube.com/@Danilo-CM
     'UCta1sF9e9YzzNG4OlQgIlXw', # Deborah Folloni | https://www.youtube.com/@deborahfolloni
     'UC-bvuG8yEG1SEPYLzABkvlA', # Desfrutando a Vida | https://www.youtube.com/@DesfrutandoaVida
-    'UCyHOBY6IDZF9zOKJPou2Rgg'  # Lucas Montano | https://www.youtube.com/@LucasMontano
+    'UCyHOBY6IDZF9zOKJPou2Rgg', # Lucas Montano | https://www.youtube.com/@LucasMontano
+    'UC4ZVkG3RQPzvZk7alIVjcCg', # The Mit Monk | https://www.youtube.com/@themitmonk
+    'UCTRSsrDFesxZnUPS6AaQSJg', # Onde Estiver o Grêmio TV | https://www.youtube.com/@oegtv-ondeestiverogremio7116
+    'UC5fI3kxC-ewZ6ZXEYgznM7g', # Codie Sanchez | https://www.youtube.com/@codiesanchezct
+    'UC3cguahrF3GVOrAHhfKn08g', # Resumindo Conhecimento | https://www.youtube.com/@resumindoconhecimento
+    'UCaahmXNbcyTFsJDH3f-bxvg', # Silvia Machado Finanças | https://www.youtube.com/@silviamachadofinancas
+    'UCyTpvFRG2v9kuzJZwUZ8M2Q', # Rascunhos Econômicos | https://www.youtube.com/@rascunhoseconomicos
+    'UCkJ8uPxz6UvoI6ihgQJZnww', # DW Brasil | https://www.youtube.com/@dwbrasil
+    'UCF4UF3ucpJtmfWrEyJDVUlg'  # Kim Foster MD | https://www.youtube.com/@kimfostermd
 ]
 
 def get_video_details(video_id):
